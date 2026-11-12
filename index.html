@@ -3,77 +3,201 @@
 <html lang="hi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Balrampur Ghar Tak</title>
 <style>
-body{font-family:Arial;margin:0;background:#f5f5f5}
-header{background:#138b45;color:white;padding:22px;text-align:center}
-h1{margin:0}
-.box{background:white;margin:15px;padding:18px;border-radius:12px}
-input{padding:12px;width:90%;margin:7px 0;border:1px solid #ccc;border-radius:7px}
-button{background:#138b45;color:white;padding:12px 18px;border:0;border-radius:7px;margin:5px}
-.product{border-bottom:1px solid #ddd;padding:12px 0}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial;background:#f4f7f4;color:#222}
+header{background:#138b45;color:white;text-align:center;padding:22px 10px}
+header h1{margin:0}
+header p{margin:7px}
+.container{padding:12px;max-width:850px;margin:auto}
+.box{background:white;padding:15px;margin:12px 0;border-radius:12px}
+input{padding:12px;width:100%;margin:6px 0;border:1px solid #ccc;border-radius:8px}
+button{background:#138b45;color:white;border:0;padding:11px 15px;border-radius:8px;cursor:pointer}
+.products{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.product{background:white;border-radius:12px;padding:13px;text-align:center;box-shadow:0 1px 5px #ddd}
+.emoji{font-size:38px}
+.product h3{font-size:16px;margin:8px 0}
+.price{color:#138b45;font-weight:bold;margin:8px}
+.qty{width:65px;padding:8px;margin:5px}
+.cartitem{border-bottom:1px solid #ddd;padding:9px 0}
+.total{font-size:18px;font-weight:bold}
+footer{text-align:center;padding:20px;background:#138b45;color:white}
 </style>
 </head>
 <body>
 
 <header>
-<h1>Balrampur Ghar Tak</h1>
+<h1>🛒 Balrampur Ghar Tak</h1>
 <p>आपके घर तक सामान की डिलीवरी</p>
 </header>
 
+<div class="container">
+
 <div class="box">
-<h2>हमारी दुकान</h2>
+<h2>🏪 हमारी दुकान</h2>
 <p>Hindu Chowk, Dahejwar, Balrampur</p>
-<p>WhatsApp से घर बैठे ऑर्डर करें।</p>
+<p>घर बैठे किराना सामान मँगाएँ।</p>
 </div>
 
 <div class="box">
-<h2>डिलीवरी चार्ज</h2>
+<h2>🔎 सामान खोजें</h2>
+<input id="search" placeholder="सामान का नाम लिखें..." oninput="showProducts()">
+</div>
+
+<h2>हमारे सामान</h2>
+<div class="products" id="products"></div>
+
+<div class="box">
+<h2>🛒 आपका कार्ट</h2>
+<div id="cart">अभी कार्ट खाली है।</div>
+<p class="total" id="subtotal">सामान का कुल: ₹0</p>
+</div>
+
+<div class="box">
+<h2>📦 डिलीवरी जानकारी</h2>
 <p>0 से 3 किलोमीटर: ₹30</p>
 <p>3 किलोमीटर के बाद: हर अतिरिक्त किलोमीटर ₹5</p>
+
+<input id="customer" placeholder="आपका नाम">
+<input id="address" placeholder="पूरा डिलीवरी पता">
+<input id="distance" type="number" min="0" step="0.1" placeholder="दुकान से दूरी (KM)" oninput="updateCart()">
+
+<p id="delivery">डिलीवरी चार्ज: ₹30</p>
+<p class="total" id="grandtotal">कुल भुगतान: ₹0</p>
+
+<button onclick="sendOrder()" style="width:100%;background:#168b45">
+WhatsApp पर ऑर्डर भेजें
+</button>
 </div>
 
-<div class="box">
-<h2>अपना ऑर्डर भेजें</h2>
-<input id="name" placeholder="अपना नाम लिखें">
-<input id="address" placeholder="अपना पूरा पता लिखें">
-<input id="distance" type="number" min="0" step="0.1" placeholder="दुकान से दूरी किलोमीटर में">
-<textarea id="items" placeholder="सामान और मात्रा लिखें" style="width:95%;height:90px;padding:10px"></textarea>
-<p id="charge">डिलीवरी चार्ज: ₹30</p>
-<button onclick="sendOrder()">WhatsApp पर ऑर्डर भेजें</button>
 </div>
+
+<footer>
+<p>Balrampur Ghar Tak</p>
+<p>आपका अपना ऑनलाइन किराना स्टोर ❤️</p>
+</footer>
 
 <script>
-const distanceInput=document.getElementById("distance");
-distanceInput.addEventListener("input",()=>{
-let km=Number(distanceInput.value)||0;
-let charge=km<=3?30:30+Math.ceil(km-3)*5;
-document.getElementById("charge").innerText="डिलीवरी चार्ज: ₹"+charge;
+// दुकान के सामान और रेट यहाँ से बदल सकते हैं
+const items = [
+{name:"चावल",price:55,unit:"kg",emoji:"🍚"},
+{name:"आटा",price:42,unit:"kg",emoji:"🌾"},
+{name:"दाल",price:120,unit:"kg",emoji:"🫘"},
+{name:"चीनी",price:45,unit:"kg",emoji:""},
+{name:"नमक",price:20,unit:"kg",emoji:"🧂"},
+{name:"तेल",price:150,unit:"लीटर",emoji:"🛢️"},
+{name:"हल्दी",price:40,unit:"100 ग्राम",emoji:""},
+{name:"मिर्च पाउडर",price:45,unit:"100 ग्राम",emoji:"🌶️"},
+{name:"धनिया पाउडर",price:35,unit:"100 ग्राम",emoji:""},
+{name:"चायपत्ती",price:50,unit:"250 ग्राम",emoji:"☕"},
+{name:"साबुन",price:35,unit:"पीस",emoji:"🧼"},
+{name:"शैम्पू",price:2,unit:"पाउच",emoji:""},
+{name:"बिस्कुट",price:10,unit:"पैकेट",emoji:"🍪"},
+{name:"नमकीन",price:20,unit:"पैकेट",emoji:""},
+{name:"चना",price:80,unit:"kg",emoji:""},
+{name:"मटर",price:90,unit:"kg",emoji:"🟢"},
+{name:"पोहा",price:45,unit:"kg",emoji:""},
+{name:"सूजी",price:45,unit:"kg",emoji:""},
+{name:"मैदा",price:40,unit:"kg",emoji:""},
+{name:"टूथपेस्ट",price:50,unit:"पीस",emoji:"🪥"}
+];
+
+let cart={};
+
+function showProducts(){
+let search=document.getElementById("search").value.toLowerCase();
+let html="";
+items.forEach((p,i)=>{
+if(!p.name.toLowerCase().includes(search))return;
+html+=`
+<div class="product">
+<div class="emoji">${p.emoji||"🛍️"}</div>
+<h3>${p.name}</h3>
+<div class="price">₹${p.price} / ${p.unit}</div>
+<button onclick="add(${i})">कार्ट में डालें</button>
+</div>`;
 });
+document.getElementById("products").innerHTML=html||"कोई सामान नहीं मिला।";
+}
+
+function add(i){
+cart[i]=(cart[i]||0)+1;
+updateCart();
+}
+
+function changeQty(i,value){
+if(value<=0)delete cart[i];
+else cart[i]=value;
+updateCart();
+}
+
+function updateCart(){
+let html="",subtotal=0;
+Object.keys(cart).forEach(i=>{
+let p=items[i],qty=cart[i],amount=p.price*qty;
+subtotal+=amount;
+html+=`<div class="cartitem">
+<b>${p.name}</b> — ₹${amount}
+<br>
+<button onclick="changeQty(${i},${qty-1})">−</button>
+${qty}
+<button onclick="changeQty(${i},${qty+1})">+</button>
+<button onclick="changeQty(${i},0)">हटाएँ</button>
+</div>`;
+});
+document.getElementById("cart").innerHTML=html||"अभी कार्ट खाली है।";
+document.getElementById("subtotal").innerText="सामान का कुल: ₹"+subtotal;
+
+let km=Number(document.getElementById("distance").value)||0;
+let delivery=km<=3?30:30+Math.ceil(km-3)*5;
+document.getElementById("delivery").innerText="डिलीवरी चार्ज: ₹"+delivery;
+document.getElementById("grandtotal").innerText="कुल भुगतान: ₹"+(subtotal+delivery);
+}
 
 function sendOrder(){
-let name=document.getElementById("name").value;
-let address=document.getElementById("address").value;
-let km=Number(distanceInput.value);
-let items=document.getElementById("items").value;
+let name=document.getElementById("customer").value.trim();
+let address=document.getElementById("address").value.trim();
+let distance=document.getElementById("distance").value;
+let km=Number(distance);
 
-if(!name||!address||!items||!distanceInput.value){
-alert("कृपया सभी जानकारी भरें");
+if(!name||!address||distance===""||km<0){
+alert("कृपया नाम, पता और सही दूरी भरें।");
 return;
 }
-if(km<0){alert("दूरी सही लिखें");return;}
+if(Object.keys(cart).length===0){
+alert("पहले कार्ट में सामान डालें।");
+return;
+}
 
-let charge=km<=3?30:30+Math.ceil(km-3)*5;
-let msg=`नया ऑर्डर - Balrampur Ghar Tak
+let subtotal=0,details="";
+Object.keys(cart).forEach(i=>{
+let p=items[i],qty=cart[i],amount=p.price*qty;
+subtotal+=amount;
+details+=`${p.name}: ${qty} x ₹${p.price} = ₹${amount}\n`;
+});
+
+let delivery=km<=3?30:30+Math.ceil(km-3)*5;
+let total=subtotal+delivery;
+
+let message=`नया ऑर्डर - Balrampur Ghar Tak
+
 नाम: ${name}
 पता: ${address}
-सामान: ${items}
 दूरी: ${km} KM
-डिलीवरी चार्ज: ₹${charge}`;
 
-window.open("https://wa.me/919203940892?text="+encodeURIComponent(msg),"_blank");
+सामान:
+${details}
+सामान का कुल: ₹${subtotal}
+डिलीवरी चार्ज: ₹${delivery}
+कुल भुगतान: ₹${total}`;
+
+window.open("https://wa.me/919203940892?text="+encodeURIComponent(message),"_blank");
 }
+
+showProducts();
+updateCart();
 </script>
 </body>
 </html>
