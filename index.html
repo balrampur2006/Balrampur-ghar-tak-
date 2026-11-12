@@ -1,0 +1,79 @@
+
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Balrampur Ghar Tak</title>
+<style>
+body{font-family:Arial;margin:0;background:#f5f5f5}
+header{background:#138b45;color:white;padding:22px;text-align:center}
+h1{margin:0}
+.box{background:white;margin:15px;padding:18px;border-radius:12px}
+input{padding:12px;width:90%;margin:7px 0;border:1px solid #ccc;border-radius:7px}
+button{background:#138b45;color:white;padding:12px 18px;border:0;border-radius:7px;margin:5px}
+.product{border-bottom:1px solid #ddd;padding:12px 0}
+</style>
+</head>
+<body>
+
+<header>
+<h1>Balrampur Ghar Tak</h1>
+<p>आपके घर तक सामान की डिलीवरी</p>
+</header>
+
+<div class="box">
+<h2>हमारी दुकान</h2>
+<p>Hindu Chowk, Dahejwar, Balrampur</p>
+<p>WhatsApp से घर बैठे ऑर्डर करें।</p>
+</div>
+
+<div class="box">
+<h2>डिलीवरी चार्ज</h2>
+<p>0 से 3 किलोमीटर: ₹30</p>
+<p>3 किलोमीटर के बाद: हर अतिरिक्त किलोमीटर ₹5</p>
+</div>
+
+<div class="box">
+<h2>अपना ऑर्डर भेजें</h2>
+<input id="name" placeholder="अपना नाम लिखें">
+<input id="address" placeholder="अपना पूरा पता लिखें">
+<input id="distance" type="number" min="0" step="0.1" placeholder="दुकान से दूरी किलोमीटर में">
+<textarea id="items" placeholder="सामान और मात्रा लिखें" style="width:95%;height:90px;padding:10px"></textarea>
+<p id="charge">डिलीवरी चार्ज: ₹30</p>
+<button onclick="sendOrder()">WhatsApp पर ऑर्डर भेजें</button>
+</div>
+
+<script>
+const distanceInput=document.getElementById("distance");
+distanceInput.addEventListener("input",()=>{
+let km=Number(distanceInput.value)||0;
+let charge=km<=3?30:30+Math.ceil(km-3)*5;
+document.getElementById("charge").innerText="डिलीवरी चार्ज: ₹"+charge;
+});
+
+function sendOrder(){
+let name=document.getElementById("name").value;
+let address=document.getElementById("address").value;
+let km=Number(distanceInput.value);
+let items=document.getElementById("items").value;
+
+if(!name||!address||!items||!distanceInput.value){
+alert("कृपया सभी जानकारी भरें");
+return;
+}
+if(km<0){alert("दूरी सही लिखें");return;}
+
+let charge=km<=3?30:30+Math.ceil(km-3)*5;
+let msg=`नया ऑर्डर - Balrampur Ghar Tak
+नाम: ${name}
+पता: ${address}
+सामान: ${items}
+दूरी: ${km} KM
+डिलीवरी चार्ज: ₹${charge}`;
+
+window.open("https://wa.me/919203940892?text="+encodeURIComponent(msg),"_blank");
+}
+</script>
+</body>
+</html>
