@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Balrampur Ghar Tak - Admin</title>
+<style>
+body{font-family:Arial;background:#f2f5f2;margin:0;color:#222}
+header{background:#138b45;color:white;padding:18px;text-align:center}
+.box{background:white;padding:16px;margin:15px auto;border-radius:12px;max-width:650px}
+input{width:100%;padding:12px;margin:7px 0;box-sizing:border-box;border:1px solid #ccc;border-radius:7px}
+button{background:#138b45;color:white;border:0;padding:11px 15px;border-radius:7px;margin:4px}
+.danger{background:#c62828}
+.product,.order{border-bottom:1px solid #ddd;padding:12px 0}
+.hidden{display:none}
+</style>
+</head>
+<body>
+
+<header>
+<h2>🛒 Balrampur Ghar Tak</h2>
+<h3>Admin Panel</h3>
+</header>
+
+<div class="box" id="loginBox">
+<h2>Admin Login</h2>
+<input id="email" type="email" placeholder="Admin Email">
+<input id="password" type="password" placeholder="Password">
+<button onclick="login()">Login करें</button>
+<p id="loginMsg"></p>
+</div>
+
+<div id="panel" class="hidden">
+
+<div class="box">
+<h2>Admin Dashboard</h2>
+<p id="adminEmail"></p>
+<button onclick="logout()">Logout</button>
+</div>
+
+<div class="box">
+<h2>➕ सामान जोड़ें / बदलें</h2>
+<input id="pname" placeholder="सामान का नाम">
+<input id="price" type="number" min="0" placeholder="कीमत">
+<input id="unit" placeholder="Unit जैसे kg, लीटर, पीस">
+<input id="stock" type="number" min="0" placeholder="स्टॉक">
+<input id="editId" type="hidden">
+<button onclick="saveProduct()">Save Product</button>
+<button onclick="clearForm()" style="background:#666">नया सामान</button>
+<p id="productMsg"></p>
+</div>
+
+<div class="box">
+<h2>📦 आपके सामान</h2>
+<div id="productList">लोड हो रहा है...</div>
+</div>
+
+<div class="box">
+<h2>🧾 ग्राहक के ऑर्डर</h2>
+<div id="orderList">लोड हो रहा है...</div>
+</div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDDuMl7ETaS3tCXGvGdvV8jUgKjEiwhKLc",
+  authDomain: "balrampur-ghar-tak.firebaseapp.com",
+  projectId: "balrampur-ghar-tak",
+  storageBucket: "balrampur-ghar-tak.firebasestorage.app",
+  messagingSenderId: "624563567366",
+  appId: "1:624563567366:web:f4bbae6acf43526750fc87"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+let currentUser = null;
+let productListener = null;
+let orderListener = null;
+
+function login(){
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+
+  document.getElementById("loginMsg").innerText = "Login हो रहा है...";
+
+  auth.signInWithEmailAndPassword(email,password)
+  .catch(error=>{
+    document.getElementById("loginMsg").innerText = error.message;
+  });
+}
+
+auth.onAuthStateChanged(async user=>{
+  if(!user){
+    currentUser=null;
+    document.getElementById("loginBox").classList.remove("hidden");
+    document.getElementById("panel").classList.add("hidden");
+    return;
+  }
+
+  try{
+    const adminDoc = await db.collection("admins").doc(user.uid).get();
+
+    if(!adminDoc.exists){
+      await auth.signOut();
+      document.getElementById("loginMsg").innerText =
+        "यह अकाउंट Admin नहीं है।";
+      return;
+    }
+
+    currentUser=user;
+    document.getElementById("loginBox").classList.add("hidden");
+    document.getElementById("panel").classList.remove("hidden");
+    document.getElementById("adminEmail").innerText =
+      "Login: "+user.email;
+
+    loadProducts();
+    loadOrders();
+
+  }catch(error){
+    document.getElementById("loginMsg").innerText =
+      "Error: "+error.message;
+  }
+});
+
+function logout(){
+  auth.signOut();
+}
+
+function loadProducts(){
+  if(productListener) productListener();
+
+  productListener=db.collection("products").onSnapshot(snapshot=>{
+    const list=document.getElementById("productList");
+    list.innerHTML="";
+
+    if(snapshot.empty){
+      list.innerText="अभी कोई सामान नहीं है।";
+      return;
+    }
+
+    snapshot.forEach(doc=>{
+      const p=doc.data();
+      const div=document.createElement("div");
+      div.className="product";
+
+      const title=document.createElement("b");
+      title.textContent=p.name || "बिना नाम का सामान";
+
+      const info=document.createElement("p");
+      info.textContent="कीमत: ₹"+(p.price||0)+" / "+(p.unit||"")+
+        " | स्टॉक: "+(p.stock??0);
+
+      const edit=document.createElement("button");
+      edit.textContent="बदलें";
+      edit.onclick=()=>editProduct(doc.id,p);
+
+      const del=document.createElement("button");
+      del.textContent="हटाएँ";
+      del.className="danger";
+      del.onclick=()=>deleteProduct(doc.id);
+
+      div.append(title,info,edit,del);
+      list.appendChild(div);
+    });
+  },error=>{
+    document.getElementById("productList").innerText=error.message;
+  });
+}
+
+function saveProduct(){
+  if(!currentUser)return;
+
+  const name=document.getElementById("pname").value.trim();
+  const price=Number(document.getElementById("price").value);
+  const unit=document.getElementById("unit").value.trim();
+  const stock=Number(document.getElementById("stock").value);
+  const id=document.getElementById("editId").value;
+
+  if(!name || document.getElementById("price").value==="" ||
+     !unit || document.getElementById("stock").value===""){
+    alert("सभी जानकारी भरें।");
+    return;
+  }
+
+  if(!Number.isFinite(price)||price<0||
+     !Number.isInteger(stock)||stock<0){
+    alert("कीमत और स्टॉक सही भरें।");
+    return;
+  }
+
+  const data={name,price,unit,stock};
+
+  let task=id
+    ? db.collection("products").doc(id).update(data)
+    : db.collection("products").add(data);
+
+  task.then(()=>{
+    document.getElementById("productMsg").innerText="सामान Save हो गया!";
+    clearForm();
+  }).catch(error=>{
+    alert("Save नहीं हुआ: "+error.message);
+  });
+}
+
+function editProduct(id,p){
+  document.getElementById("editId").value=id;
+  document.getElementById("pname").value=p.name||"";
+  document.getElementById("price").value=p.price??"";
+  document.getElementById("unit").value=p.unit||"";
+  document.getElementById("stock").value=p.stock??"";
+  window.scrollTo(0,0);
+}
+
+function clearForm(){
+  document.getElementById("editId").value="";
+  document.getElementById("pname").value="";
+  document.getElementById("price").value="";
+  document.getElementById("unit").value="";
+  document.getElementById("stock").value="";
+}
+
+function deleteProduct(id){
+  if(!confirm("क्या आप यह सामान हटाना चाहते हैं?"))return;
+
+  db.collection("products").doc(id).delete()
+  .catch(error=>alert(error.message));
+}
+
+function loadOrders(){
+  if(orderListener) orderListener();
+
+  orderListener=db.collection("orders").onSnapshot(snapshot=>{
+    const list=document.getElementById("orderList");
+    list.innerHTML="";
+
+    if(snapshot.empty){
+      list.innerText="अभी कोई ऑर्डर नहीं है।";
+      return;
+    }
+
+    snapshot.forEach(doc=>{
+      const o=doc.data();
+      const div=document.createElement("div");
+      div.className="order";
+
+      const details=document.createElement("pre");
+      details.style.whiteSpace="pre-wrap";
+      details.textContent=JSON.stringify(o,null,2);
+
+      div.appendChild(details);
+      list.appendChild(div);
+    });
+  },error=>{
+    document.getElementById("orderList").innerText=error.message;
+  });
+}
+</script>
+</body>
+</html>
+
